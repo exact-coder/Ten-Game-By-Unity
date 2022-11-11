@@ -1,4 +1,4 @@
-
+using UnityEngine.SceneManagement;
 using UnityEngine;
 
 public class Invaders : MonoBehaviour
@@ -8,7 +8,14 @@ public class Invaders : MonoBehaviour
     public int rows = 5;
 
     public int columns = 11;
-    public float spreed = 10.0f;
+    public AnimationCurve spreed;
+    public Projectile missilePrefab;
+    public float missileAttackRate = 1.0f;
+
+    public int amountKilled { get; private set; }
+    public int amountAlive => this.totalInvaders - this.amountKilled;
+    public int totalInvaders => this.rows * this.columns;
+    public float percentKilled => (float)this.amountKilled / (float)this.totalInvaders;
 
     private Vector3 _direction = Vector3.right;
 
@@ -23,6 +30,7 @@ public class Invaders : MonoBehaviour
             for(int col = 0; col < this.columns; col++)
             {
                 Invader invader = Instantiate(this.prefabs[row], this.transform);
+                invader.killed += InvaderKilled;
                 Vector3 position = rowPosition;
                 position.x += col * 2.0f;
                 invader.transform.localPosition = position;
@@ -30,9 +38,14 @@ public class Invaders : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        InvokeRepeating(nameof(MissileAttack), this.missileAttackRate, this.missileAttackRate);
+    }
+
     private void Update()
     {
-        this.transform.position += _direction * this.spreed * Time.deltaTime;
+        this.transform.position += _direction * this.spreed.Evaluate(this.percentKilled) * Time.deltaTime;
 
         Vector3 leftEdge = Camera.main.ViewportToWorldPoint(Vector3.zero);
         Vector3 rightEdge = Camera.main.ViewportToWorldPoint(Vector3.right);
@@ -54,16 +67,40 @@ public class Invaders : MonoBehaviour
         }
     }
 
- private void AdvanceRow()
-    {
-        _direction.x *= -1.0f;
+     private void AdvanceRow()
+     {
+            _direction.x *= -1.0f;
 
-        Vector3 position = this.transform.position;
-        position.y -= 1.0f;
-        this.transform.position = position;
+            Vector3 position = this.transform.position;
+            position.y -= 1.0f;
+            this.transform.position = position;
+     }
+
+    private void MissileAttack()
+    {
+        foreach(Transform invader in this.transform)
+        {
+            if (!invader.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+            if(Random.value < (1.0f / (float)this.amountAlive))
+            {
+                Instantiate(this.missilePrefab, invader.position, Quaternion.identity);
+                break;
+            }
+        }
+    }
+
+    private void InvaderKilled()
+    {
+        this.amountKilled++;
+
+        if(this.amountKilled >= this.totalInvaders)
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
     }
 }
 
 
-
-//Your Watching Vedio Length is 39min
